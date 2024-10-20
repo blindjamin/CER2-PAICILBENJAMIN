@@ -1,0 +1,15 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Inicio - Tienda Verde{% endblock %}
+
+{% block content %}
+<h1>Bienvenido a Tienda Verde</h1>
+
+{% if user.is_authenticated %}
+    <p>Estás autenticado como {{ user.username }}.</p>
+    
+{% else %}
+    <p>No estás autenticado.</p>
+    
+{% endif %}
+{% endblock %}

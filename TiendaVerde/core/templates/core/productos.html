@@ -1,0 +1,42 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Catálogo de Productos{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="text-center">Catálogo de Productos</h1>
+    <div class="row">
+
+        <!-- Itera sobre la lista de productos que se pasa desde la vista -->
+        {% for producto in productos %}
+        <div class="col-sm-6 col-md-4 col-lg-3 mb-4">
+            <div class="card">
+                <!-- Imagen del producto -->
+                <img src="{{ producto.imagen.url }}" class="card-img-top" alt="{{ producto.nombre }}">
+                <div class="card-body">
+                    <!-- Nombre del producto -->
+                    <h5 class="card-title">{{ producto.nombre }}</h5>
+                    <!-- Descripción del producto -->
+                    <p class="card-text">{{ producto.descripcion }}</p>
+                    <!-- Precio del producto -->
+                    <p class="card-text"><strong>${{ producto.precio }}</strong></p>
+
+                    <!-- Si el usuario está autenticado, se permite agregar al carrito -->
+                    {% if user.is_authenticated %}
+                    <form method="post" action="{% url 'productos' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="producto_id" value="{{ producto.id }}">
+                        <button type="submit" class="btn btn-primary w-100">Agregar al carrito</button>
+                    </form>
+                    {% else %}
+                    <!-- Si el usuario no está autenticado, se redirige al login -->
+                    <a href="{% url 'login' %}?next={% url 'productos' %}" class="btn btn-secondary w-100">Iniciar sesión para comprar</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+    </div>
+</div>
+{% endblock %}
