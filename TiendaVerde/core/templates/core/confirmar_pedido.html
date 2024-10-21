@@ -1,0 +1,39 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Confirmar Pedido{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1>Confirmar Pedido</h1>
+
+    <h3>Resumen de tu pedido</h3>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Precio Unitario</th>
+                <th>Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in carrito.carritoitem_set.all %}
+            <tr>
+                <td>{{ item.producto.nombre }}</td>
+                <td>{{ item.cantidad }}</td>
+                <td>{{ item.producto.precio }} $</td>
+                <td>{{ item.cantidad|floatformat:2|add:item.producto.precio|floatformat:2 }} $</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="d-flex justify-content-between">
+        <h3>Total: {{ carrito.total|floatformat:2 }} $</h3>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">Confirmar Pedido</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

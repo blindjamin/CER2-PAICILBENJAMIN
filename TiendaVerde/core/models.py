@@ -7,6 +7,7 @@ class Producto(models.Model):
     descripcion = models.TextField()
     precio = models.DecimalField(max_digits=10, decimal_places=2)
     stock = models.PositiveIntegerField()
+    imagen = models.ImageField(upload_to='productos/', blank=True, null=True)  # El campo para la imagen
 
     def __str__(self):
         return self.nombre
@@ -36,11 +37,10 @@ class Pedido(models.Model):
     ]
     
     cliente = models.ForeignKey(User, on_delete=models.CASCADE)
-    carrito = models.OneToOneField(Carrito, on_delete=models.CASCADE)
+    carrito = models.ForeignKey(Carrito, on_delete=models.CASCADE)  # Change to ForeignKey
     estado = models.CharField(max_length=4, choices=ESTADO_CHOICES, default='PEND')
     total = models.DecimalField(max_digits=10, decimal_places=2)
     fecha = models.DateTimeField(auto_now_add=True)
-
     def __str__(self):
         return f"Pedido {self.id} de {self.cliente.username} - {self.estado}"
 

@@ -1,0 +1,44 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Mis Pedidos{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Mis Pedidos</h2>
+    
+    {% if pedidos %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">Pedido ID</th>
+                    <th scope="col">Fecha</th>
+                    <th scope="col">Total</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">Detalles</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pedido in pedidos %}
+                <tr>
+                    <th scope="row">{{ pedido.id }}</th>
+                    <td>{{ pedido.fecha|date:"d M Y H:i" }}</td>
+                    <td>${{ pedido.total }}</td>
+                    <td>
+                        {% if pedido.estado == 'PEND' %}
+                            <span class="badge bg-warning text-dark">Pendiente</span>
+                        {% else %}
+                            <span class="badge bg-success">Completado</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'detalle_pedido' pedido.id %}" class="btn btn-primary btn-sm">Ver Detalles</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="text-center">No has realizado ningún pedido aún.</p>
+    {% endif %}
+</div>
+{% endblock %}

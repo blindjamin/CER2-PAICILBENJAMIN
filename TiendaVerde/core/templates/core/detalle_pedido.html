@@ -1,0 +1,41 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Detalle del Pedido{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Detalle del Pedido #{{ pedido.id }}</h2>
+    <p><strong>Fecha:</strong> {{ pedido.fecha|date:"d M Y H:i" }}</p>
+    <p><strong>Total:</strong> ${{ pedido.total }}</p>
+    <p><strong>Estado:</strong> 
+        {% if pedido.estado == 'PEND' %}
+            <span class="badge bg-warning text-dark">Pendiente</span>
+        {% else %}
+            <span class="badge bg-success">Completado</span>
+        {% endif %}
+    </p>
+
+    <h4>Productos en el pedido:</h4>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th scope="col">Producto</th>
+                <th scope="col">Cantidad</th>
+                <th scope="col">Precio Unitario</th>
+                <th scope="col">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.producto.nombre }}</td>
+                <td>{{ item.cantidad }}</td>
+                <td>${{ item.producto.precio }}</td>
+                <td>${{ item.producto.precio|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{% url 'pedidos_cliente' %}" class="btn btn-secondary">Volver a Mis Pedidos</a>
+</div>
+{% endblock %}

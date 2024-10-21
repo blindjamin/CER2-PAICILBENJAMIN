@@ -1,0 +1,53 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Carrito de compras{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1>Carrito de compras</h1>
+
+    {% if items_con_subtotal %}
+        <form method="post" action="{% url 'carrito' %}">
+            {% csrf_token %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Precio Unitario</th>
+                        <th>Subtotal</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items_con_subtotal %}
+                    <tr>
+                        <td>{{ item.producto.nombre }}</td>
+                        <td>
+                            <input type="number" name="cantidad_{{ item.producto.id }}" value="{{ item.cantidad }}" min="0" class="form-control" style="width: 80px;">
+                        </td>
+                        <td>{{ item.precio_unitario }} $</td>
+                        <td>{{ item.subtotal|floatformat:2 }} $</td>
+                        <td>
+                            <button type="submit" name="eliminar_{{ item.producto.id }}" class="btn btn-danger">Eliminar</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="d-flex justify-content-between">
+                <h3>Total: {{ total|floatformat:2 }} $</h3>
+                <button type="submit" class="btn btn-primary">Actualizar carrito</button>
+            </div>
+        </form>
+
+        <div class="mt-4">
+            <a href="{% url 'productos' %}" class="btn btn-secondary">Volver al catálogo</a>            
+            <a href="{% url 'confirmar_pedido' %}" class="btn btn-success">Confirmar Pedido</a>
+        </div>
+    {% else %}
+        <p>Tu carrito está vacío.</p>
+        <a href="{% url 'productos' %}" class="btn btn-secondary">Volver al catálogo</a>
+    {% endif %}
+</div>
+{% endblock %}

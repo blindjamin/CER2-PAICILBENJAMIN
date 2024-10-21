@@ -1,11 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, authenticate
 from .models import Carrito, Producto, Pedido, CarritoItem
-from django.urls import reverse_lazy, reverse
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import Group
-
+from .forms import RegistroForm
+from .models import Pedido
 
 # Views para usuarios no registrados.
 
@@ -19,21 +19,14 @@ def home(request):
 
 def registro(request):
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = RegistroForm(request.POST)
         if form.is_valid():
             user = form.save()
-
-            # Asignar el usuario al grupo "Clientes"
-            clientes_group = Group.objects.get(name='Clientes')  # Buscar el grupo Clientes
-            user.groups.add(clientes_group)  # Asignar al usuario al grupo
-
-            # Autenticar e iniciar sesión al usuario después del registro
-            login(request, user)
-            return redirect('home')
+            login(request, user)  # Iniciar sesión automáticamente después del registro
+            return redirect('home')  # Redirigir a la página principal después del registro
     else:
-        form = UserCreationForm()
-
-    return render(request, 'tienda/registro.html', {'form': form})
+        form = RegistroForm()
+    return render(request, 'core/registro.html', {'form': form})
 
 
 
@@ -66,7 +59,14 @@ def productos(request):
         if request.user.is_authenticated:
             carrito, created = Carrito.objects.get_or_create(cliente=request.user)
             carrito_item, created = CarritoItem.objects.get_or_create(carrito=carrito, producto=producto)
-            carrito_item.cantidad += 1
+
+            if not created:
+                # Solo incrementamos la cantidad si el item ya existía
+                carrito_item.cantidad += 1
+            else:
+                # Si el item es nuevo, lo iniciamos con una cantidad de 1
+                carrito_item.cantidad = 1
+                
             carrito_item.save()
 
             return redirect('carrito')
@@ -75,43 +75,98 @@ def productos(request):
 
     return render(request, 'core/productos.html', {'productos': productos_list})
 
-
 # Views para clientes registrados.
 
 @login_required
 def carrito(request):
-    carrito = Carrito.objects.get(cliente=request.user)
-    
+    # Intenta obtener el carrito del usuario, si no existe, lo crea
+    carrito, created = Carrito.objects.get_or_create(cliente=request.user)
+
     if request.method == 'POST':
         # Actualizar o eliminar productos del carrito
         for item in carrito.carritoitem_set.all():
             cantidad = request.POST.get(f'cantidad_{item.producto.id}')
-            if cantidad == '0':
-                item.delete()  # Eliminar el producto si la cantidad es 0
+            
+            # Eliminar producto si se presiona el botón de eliminar
+            if f'eliminar_{item.producto.id}' in request.POST:
+                item.delete()
             else:
-                item.cantidad = int(cantidad)
-                item.save()
+                # Actualizar la cantidad si no es 0
+                if cantidad and int(cantidad) > 0:
+                    item.cantidad = int(cantidad)
+                    item.save()
+                elif int(cantidad) == 0:
+                    item.delete()  # Eliminar el producto si la cantidad es 0
 
         return redirect('carrito')
 
-    return render(request, 'tienda/carrito.html', {'carrito': carrito})
+    # Calcular el total y los subtotales para cada item
+    total = 0
+    items_con_subtotal = []
+    for item in carrito.carritoitem_set.all():
+        subtotal = item.producto.precio * item.cantidad
+        total += subtotal
+        items_con_subtotal.append({
+            'producto': item.producto,
+            'cantidad': item.cantidad,
+            'precio_unitario': item.producto.precio,
+            'subtotal': subtotal
+        })
+
+    carrito.total = total
+    carrito.save()
+
+    return render(request, 'core/carrito.html', {'carrito': carrito, 'items_con_subtotal': items_con_subtotal, 'total': total})
+
+
 
 @login_required
 def confirmar_pedido(request):
-    carrito = Carrito.objects.get(cliente=request.user)
-    if request.method == 'POST':
-        # Crear un pedido a partir del carrito
-        pedido = Pedido.objects.create(cliente=request.user, carrito=carrito, total=carrito.total)
-        pedido.save()
+    # Obtener el carrito del usuario
+    try:
+        carrito = Carrito.objects.get(cliente=request.user)
+    except Carrito.DoesNotExist:
+        # Si no hay carrito asociado, redirige al carrito vacío
+        return redirect('carrito')
 
-        # Vaciar el carrito
+    # Verificar si el carrito no está vacío
+    if not carrito.carritoitem_set.exists():
+        return redirect('carrito')  # Redirige al carrito si está vacío
+
+    if request.method == 'POST':
+        # Crear el pedido solo si no existe un pedido para este carrito
+        pedido = Pedido.objects.create(
+            cliente=request.user,
+            carrito=carrito,  # Asociar el carrito con el pedido
+            total=carrito.total,
+            estado='PEND',
+        )
+
+        # Vaciar el carrito anterior
         carrito.carritoitem_set.all().delete()
 
+        # **No crear un nuevo carrito si ya existe uno**
+        carrito.total = 0
+        carrito.save()
+
+        # Redirigir al historial de pedidos
         return redirect('pedidos_cliente')
 
-    return render(request, 'tienda/confirmar_pedido.html', {'carrito': carrito})
+    return render(request, 'core/confirmar_pedido.html', {'carrito': carrito})
 
 @login_required
-def pedidos_cliente(request):
-    pedidos = Pedido.objects.filter(cliente=request.user)
-    return render(request, 'tienda/pedidos_cliente.html', {'pedidos': pedidos})
+def pedidos(request):
+    # Obtener los pedidos del usuario actual
+    pedidos = Pedido.objects.filter(cliente=request.user).order_by('-fecha')
+
+    return render(request, 'core/pedidos.html', {'pedidos': pedidos})
+
+@login_required
+def detalle_pedido(request, pedido_id):
+    # Obtener el pedido específico del usuario
+    pedido = get_object_or_404(Pedido, id=pedido_id, cliente=request.user)
+    
+    # Obtener los items del carrito asociados al pedido
+    items = pedido.carrito.carritoitem_set.all()
+
+    return render(request, 'core/detalle_pedido.html', {'pedido': pedido, 'items': items})
